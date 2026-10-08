@@ -1,0 +1,38 @@
+name: Build Windows VST3
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find project folder
+        shell: pwsh
+        run: |
+          $cm = Get-ChildItem -Recurse -Filter CMakeLists.txt | Where-Object { (Get-Content $_.FullName -Raw) -match 'juce_add_plugin' } | Select-Object -First 1
+          if (-not $cm) { Write-Error "CMakeLists.txt not found - did the Source folder upload?"; exit 1 }
+          "PROJ=$($cm.DirectoryName)" | Out-File -Append $env:GITHUB_ENV
+          Write-Host "Project found in $($cm.DirectoryName)"
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S "$env:PROJ" -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target GrainLab_VST3 GrainLab_Standalone --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item -Recurse "build/GrainLab_artefacts/Release/VST3/*.vst3" dist/
+          Copy-Item "build/GrainLab_artefacts/Release/Standalone/*.exe" dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GrainLab-Windows-VST3
+          path: dist/
