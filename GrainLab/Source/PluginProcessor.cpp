@@ -131,7 +131,7 @@ void GrainLabProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     int clipped = 0;
     constexpr float knee = 0.85f;
 
-    auto softClip = [&clipped] (float x) noexcept
+    auto softClip = [&clipped, knee] (float x) noexcept
     {
         const float a = std::abs (x);
         if (a <= knee) return x;
